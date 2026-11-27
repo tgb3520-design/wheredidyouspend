@@ -450,6 +450,7 @@ button.warnb{background:var(--warn);border-color:var(--warn);color:#fff;font-wei
     <p class="note" id="eFixNote" hidden style="margin:0">매달 고른 날짜의 '일'에 자동으로 기록돼요. 날짜가 지나면 이번 달 것도 바로 기록돼요.</p>
     <button class="red save" id="eSave">저장</button>
     <button class="ghost" id="eDel" style="color:var(--warn);border:0">삭제</button>
+    <button class="ghost" id="eDelBatch" hidden style="color:var(--warn);border:0;margin-top:-10px"></button>
   </div>
 </div>
 
@@ -866,7 +867,7 @@ function openSheet(tx,kind){
   }else E=tx?{...tx,kind,edit:true,accManual:!!tx.acc}:{...base,kind};
   $('eTitle').textContent=kind==='fixed'?'고정 항목':(E.edit?'수정 중':'');
   $('eAmt').value=E.a?won(E.a):'';$('eMemo').value=E.memo||'';$('eDate').value=E.d;$('eFav').checked=false;$('eRep').checked=false;
-  $('eDel').hidden=!E.edit;$('eFavL').hidden=E.edit||kind==='fixed';$('eRepL').hidden=E.edit||kind==='fixed';$('eFixNote').hidden=kind!=='fixed';
+  $('eDel').hidden=!E.edit;{const nb=E.edit&&E.ib?S.tx.filter(x=>x.ib===E.ib).length:0;$('eDelBatch').hidden=nb<2;if(nb>1)$('eDelBatch').textContent=`같은 캡처로 불러온 ${nb}건 모두 삭제`}$('eFavL').hidden=E.edit||kind==='fixed';$('eRepL').hidden=E.edit||kind==='fixed';$('eFixNote').hidden=kind!=='fixed';
   $('eNewCat').hidden=true;$('eCatDel').hidden=true;
   sheetType();$('sheet').classList.add('open');
   clearTimeout(focusT);focusT=setTimeout(()=>{if(!$('sheet').contains(document.activeElement)||document.activeElement===document.body)$('eAmt').focus()},50);
@@ -1078,7 +1079,8 @@ function renderImp(){
   $('impAdd').hidden=false;$('impAdd').disabled=!n;$('impAdd').textContent=n?`${n}건 추가`:'추가할 내역을 골라 주세요';
 }
 function impAddAll(){
-  const add=IMP.filter(x=>x.on).map(x=>{const tx={id:uid(),t:x.t,a:x.a,cat:x.cat,memo:x.memo,d:x.d,at:Date.now()};if(x.t==='out'&&impAcc&&impAcc!==accOf(x.cat))tx.acc=impAcc;return tx});
+  const ib=uid();
+  const add=IMP.filter(x=>x.on).map(x=>{const tx={id:uid(),t:x.t,a:x.a,cat:x.cat,memo:x.memo,d:x.d,at:Date.now(),ib};if(x.t==='out'&&impAcc&&impAcc!==accOf(x.cat))tx.acc=impAcc;return tx});
   if(!add.length)return;
   S.tx.push(...add);$('imp').classList.remove('open');month=periodOf(add[0].d);save();render();
   toast(`${add.length}건을 추가했어요`,()=>{const ids=new Set(add.map(x=>x.id));S.tx=S.tx.filter(x=>!ids.has(x.id));save();render()});
@@ -1116,7 +1118,7 @@ function saveSheet(){
     closeSheet();const n=runFixed();save();render();
     toast(isNew?`고정 항목을 추가했어요${n?' · 이번 달 것도 기록했어요':''}`:'고정 항목을 고쳤어요. 이미 기록된 내역은 그대로예요');return;
   }
-  const tx={id:E.id,t:E.t,a,cat:E.cat,memo,d,at:E.at||Date.now()};S.lastCat[E.t]=E.cat;if(needAcc(E.t,E.cat,E.acc))tx.acc=E.acc;if(E.t==='in'){S.inAcc=S.inAcc||{};S.inAcc[E.cat]=E.acc||''}if(E.fx)tx.fx=E.fx;
+  const tx={id:E.id,t:E.t,a,cat:E.cat,memo,d,at:E.at||Date.now()};S.lastCat[E.t]=E.cat;if(needAcc(E.t,E.cat,E.acc))tx.acc=E.acc;if(E.t==='in'){S.inAcc=S.inAcc||{};S.inAcc[E.cat]=E.acc||''}if(E.fx)tx.fx=E.fx;if(E.ib)tx.ib=E.ib;
   if($('eFav').checked&&!E.edit)S.fav.push({t:tx.t,a:tx.a,cat:tx.cat,memo:tx.memo});
   if($('eRep').checked&&!E.edit){const f={id:uid(),name:memo,a,day:+d.slice(8),t:tx.t,cat:tx.cat,since:d.slice(0,7)};if(tx.acc)f.acc=tx.acc;S.fixed.push(f);S.fd[f.id+'|'+d.slice(0,7)]=1;tx.fx=f.id}
   const ed=E.edit,btn=$('eSave');btn.classList.add('done');btn.innerHTML='<svg class="ck" aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';btn.setAttribute('aria-label','저장됨');
@@ -1215,6 +1217,7 @@ document.addEventListener('click',e=>{
     if(t.id==='eSave'){saveSheet();return}
     if(t.id==='eCancel'){closeSheet();return}
     if(t.id==='eDel'&&E.kind==='fixed'){const i=S.fixed.findIndex(f=>f.id===E.id);const [f]=S.fixed.splice(i,1);closeSheet();save();render();toast('고정 항목을 지웠어요. 기록된 내역은 남아요',()=>{S.fixed.splice(i,0,f);save();render()});return}
+    if(t.id==='eDelBatch'&&E.ib){const ib=E.ib,gone=S.tx.filter(x=>x.ib===ib);S.tx=S.tx.filter(x=>x.ib!==ib);closeSheet();save();render();toast(`캡처로 불러온 ${gone.length}건을 지웠어요`,()=>{S.tx.push(...gone);save();render()});return}
     if(t.id==='eDel'){const i=S.tx.findIndex(x=>x.id===E.id);const [x]=S.tx.splice(i,1);closeSheet();save();render();toast('내역을 지웠어요',()=>{S.tx.push(x);save();render()});return}
     return;
   }
