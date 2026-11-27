@@ -41,6 +41,8 @@ button.red{background:var(--acc);border-color:var(--acc);color:var(--accInk);fon
 button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 input,select{font:inherit;font-size:16px;width:100%;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
 input.amt{text-align:right;font-family:Inter,"Noto Sans KR",sans-serif;font-variant-numeric:tabular-nums}
+.planuse{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:0 6px 0 14px;margin:-4px 0 12px;border-radius:14px;background:var(--soft);font-size:14px;color:var(--sub)}.planuse b{color:var(--acc)}.planuse button{min-height:36px;border-radius:999px;font-size:13px;font-weight:700;background:var(--acc);border-color:var(--acc);color:var(--accInk)}
+.tabs button i.use{display:inline-block;width:6px;height:6px;border-radius:3px;background:var(--acc);margin-right:6px;vertical-align:middle}.tabs button.on i.use{background:currentColor}
 .tabs{display:flex;gap:6px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}.tabs button{flex:none;min-height:36px;border-radius:999px;font-size:13px}
 /* 카드 */
 .card,section{background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px}
@@ -279,6 +281,7 @@ button.warnb{background:var(--warn);border-color:var(--warn);color:#fff;font-wei
   <!-- 월급 나누기 -->
   <div class="view" id="v-plan">
     <div class="tabs" id="tabs"></div>
+    <div class="planuse" id="planUse"></div>
     <div class="hero">
       <div style="display:flex;justify-content:space-between;align-items:center"><span class="lab">이번 달 실수령액</span><span class="pill" id="payPill">매달 1일</span></div>
       <div class="big num" id="heroNet">0</div>
@@ -551,6 +554,7 @@ function migrate(s){
   if(!s.fixed)s.fixed=[];
   if(!s.fav)s.fav=[];
   if(!s.mp)s.mp={};
+  if(!s.act)s.act=s.cur;
   if(!s.fd)s.fd={};
   if(!s.payday)s.payday=1;
   if(!s.catAcc){s.catAcc={};for(const c of s.cats.out)if(['식비','교통','카페','기타'].includes(c))s.catAcc[c]='생활비'}
@@ -618,7 +622,9 @@ function rowsHTML(list,key){
 }
 function renderPlan(){
   const p=P();
-  $('tabs').innerHTML=S.plans.map(x=>`<button data-plan="${x.id}" class="${x.id===p.id?'on':''}">${esc(x.name)}</button>`).join('')+`<button class="ghost" id="newPlan">+ 새 플랜</button>`;
+  const nowM=periodOf(today()),useP=planFor(nowM);
+  $('tabs').innerHTML=S.plans.map(x=>`<button data-plan="${x.id}" class="${x.id===p.id?'on':''}">${x.id===useP.id?'<i class="use" aria-label="사용 중"></i>':''}${esc(x.name)}</button>`).join('')+`<button class="ghost" id="newPlan">+ 새 플랜</button>`;
+  $('planUse').innerHTML=p.id===useP.id?`<span><b>지금 쓰는 플랜</b> · 매달 이대로 자동 배분돼요</span>`:`<span>지금은 '${esc(useP.name)}'으로 배분 중</span><button id="usePlan">이 플랜으로 바꾸기</button>`;
   $('planName').textContent=p.name;$('pname').value=p.name;
   $('mGross').classList.toggle('on',p.mode==='gross');$('mNet').classList.toggle('on',p.mode==='net');
   $('grossBox').hidden=p.mode!=='gross';$('netBox').hidden=p.mode!=='net';
@@ -665,7 +671,10 @@ function updatePlan(){
 
 /* ---------- 가계부 ---------- */
 const monthTx=m=>{const a=pStart(m),b=pEnd(m);return S.tx.filter(t=>t.d>=a&&t.d<=b)};
-const planFor=m=>S.plans.find(p=>p.id===S.mp[m])||P();
+// 플랜 적용: S.mp[기간] = 그 기간부터 쓰는 플랜 (다음 변경 전까지 계속 이어짐)
+const planFor=m=>{const ks=Object.keys(S.mp).filter(k=>S.plans.some(p=>p.id===S.mp[k])).sort();let k=null;for(const x of ks)if(x<=m)k=x;if(!k)k=ks[0];
+  return (k&&S.plans.find(p=>p.id===S.mp[k]))||S.plans.find(p=>p.id===S.act)||S.plans[0]};
+function usePlanFrom(m,id){S.mp[m]=id;for(const k of Object.keys(S.mp))if(k>m)delete S.mp[k];S.act=id}
 function renderBook(){
   $('mLab').textContent=mLabel(month);
   const tx=monthTx(month),plan=planFor(month),pt=planTotals(plan);
@@ -685,7 +694,7 @@ function renderBook(){
   // 계좌 고르기 패널 (플랜 선택 포함)
   $('budEdit').textContent=budOpen?'닫기':'계좌 고르기';
   $('budPickBook').hidden=!budOpen;
-  $('budPickBook').innerHTML=`<div class="field"><label for="planSel">금액을 가져올 플랜</label><select id="planSel">${S.plans.map(p=>`<option value="${p.id}"${p.id===plan.id?' selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+  $('budPickBook').innerHTML=`<div class="field"><label for="planSel">이 달부터 쓸 플랜</label><select id="planSel">${S.plans.map(p=>`<option value="${p.id}"${p.id===plan.id?' selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
     <p class="note" style="margin-top:0"><b>계좌별 현황에 볼 계좌</b></p>`+
     `<p class="note" style="margin:-4px 0 4px">맨 위 계좌가 처음에 보여요. 화살표로 순서를 바꿀 수 있어요.</p>`+
     [...S.bud.filter(n=>pt.has(n)),...[...pt.keys()].filter(n=>!S.bud.includes(n))].map(n=>{const on=S.bud.includes(n),i=S.bud.indexOf(n);
@@ -1121,7 +1130,7 @@ document.addEventListener('focusin',e=>{const t=e.target;if(t.classList&&t.class
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.classList.contains('pd')){if(!parse(t.value))return;const v=Math.min(31,Math.max(1,parse(t.value)));S.payday=v;month=periodOf(today());t.value=v+'일';save();toast(`한 달 기준일을 매달 ${v}일로 정했어요`);return}
-  if(t.id==='planSel'){S.mp[month]=t.value;save();renderBook();return}
+  if(t.id==='planSel'){usePlanFrom(month,t.value);save();renderBook();toast(`${+month.slice(5)}월부터 '${(S.plans.find(x=>x.id===t.value)||{}).name}' 플랜으로 계속 배분해요`);return}
   if(t.dataset.catacc!==undefined){const c=t.dataset.catacc;if(t.value)S.catAcc[c]=t.value;else delete S.catAcc[c];save();toast(t.value?`'${c}'는 ${t.value} 계좌 돈으로 계산해요`:`'${c}'는 자기 이름 계좌로 계산해요`);return}
   if(t.dataset.pace!==undefined){const n=t.dataset.pace;S.pace=S.pace.filter(x=>x!==n);if(t.checked)S.pace.push(n);save();if(view==='book')renderBook();return}
   if(t.dataset.bud!==undefined){const n=t.dataset.bud;S.bud=S.bud.filter(x=>x!==n);if(t.checked)S.bud.push(n);save();if(view==='book')renderBook();return}
@@ -1183,6 +1192,7 @@ document.addEventListener('click',e=>{
   if(view!=='plan'&&!accAct)return;
   const p=P();const rr=view==='plan'?renderPlan:renderSet;
   if(t.dataset.plan){S.cur=t.dataset.plan;renderPlan();save();return}
+  if(t.id==='usePlan'){const m=periodOf(today());usePlanFrom(m,p.id);renderPlan();save();toast(`${+m.slice(5)}월부터 '${p.name}' 플랜으로 계속 배분해요`);return}
   if(t.id==='newPlan'||t.id==='dup'){const c=JSON.parse(JSON.stringify(p));c.id=uid();c.name=p.name+' 복사';for(const k of['items','al','acc'])c[k].forEach(i=>i.id=uid());S.plans.push(c);S.cur=c.id;renderPlan();save();$('pname').focus();$('pname').select();return}
   if(t.id==='delPlan'){if(S.plans.length<2){toast('플랜이 하나뿐이라 지울 수 없어요');return}
     const ix=S.plans.indexOf(p);S.plans.splice(ix,1);S.cur=S.plans[0].id;renderPlan();save();
