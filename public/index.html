@@ -133,7 +133,12 @@ nav.bt button.on{color:var(--acc);font-weight:700}
 .acc .t b{font:800 17px Inter,"Noto Sans KR",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
 .acc .t b.neg{color:var(--warn)}
 .acc .s{font-size:12px;color:var(--mut);margin-top:2px}
-.acc{cursor:pointer;-webkit-tap-highlight-color:transparent}.acc.on .t span{color:var(--acc)}.acc .t span::after{content:" ›";color:var(--mut);font-weight:400}
+.slnav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center;margin-bottom:12px}
+.slnav button{min-height:44px;padding:0;border-radius:14px;font-size:20px;line-height:1;transition:opacity .2s,background .2s}.slnav button:disabled{opacity:.3}
+.slnav select{text-align:center;text-align-last:center;font-weight:700;min-height:44px}
+.slider{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.slider::-webkit-scrollbar{display:none}
+.slider .acc{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;padding:0 2px!important;border:0!important}
+.dots{display:flex;justify-content:center;gap:6px;margin-top:12px}.dots i{width:6px;height:6px;border-radius:3px;background:var(--line);transition:width .2s,background .2s}.dots i.on{width:16px;background:var(--acc)}
 .accf{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--soft);color:var(--sub);border-radius:14px;padding:0 6px 0 14px;min-height:44px;margin-bottom:8px;font-size:14px}.accf button{min-height:34px;border:0;background:transparent;color:var(--acc);font-weight:700}
 .acc .br{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.acc .br span{font-size:12px;background:var(--soft);color:var(--sub);border-radius:999px;padding:4px 10px}
 button.mini{min-height:32px;font-size:12px;padding:0 10px;font-weight:500;border-radius:999px}
@@ -232,7 +237,7 @@ button.warnb{background:var(--warn);border-color:var(--warn);color:#fff;font-wei
       <div id="budList"></div>
       <p class="note" id="outside" hidden></p>
       <div id="paceBody" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
-        <div class="sub" style="margin-bottom:8px"><b id="paceTtl" style="color:var(--ink)"></b><span>오늘 · 이번 주 계획</span></div>
+        <div class="sub" style="margin-bottom:8px"><b style="color:var(--ink)">오늘 · 이번 주 계획</b><span id="paceTtl" hidden></span></div>
         <div class="pace" id="pace"></div>
         <p class="pnote" id="paceNote" style="margin-bottom:0"></p>
       </div>
@@ -248,7 +253,7 @@ button.warnb{background:var(--warn);border-color:var(--warn);color:#fff;font-wei
     <p class="pnote" id="leftLine" style="margin-bottom:4px"><span id="paceLab">남은 돈</span> <b class="num" id="bLeft">0</b> / <span class="num" id="bBud">0</span></p>
     <p class="pnote" id="totLine">이번 기간 전체 지출 <b class="num" id="bOut">0</b> · 수입 <b class="num" id="bIn">0</b></p>
     <div class="srch"><input id="txQ" type="search" placeholder="내역 검색 (메모, 카테고리, 금액)" aria-label="내역 검색"></div>
-    <div class="accf" id="accF" hidden><span id="accFLab"></span><button id="accFOff">전체 보기</button></div>
+    <div class="accf" id="accF" hidden><span id="accFLab"></span><button id="accFOff"></button></div>
     <div id="txList"></div>
   </div>
 
@@ -554,7 +559,7 @@ let S=null;try{S=JSON.parse(localStorage.getItem('wolgeup'))}catch(e){}
 if(!S||!S.plans||!S.plans.length)S=sample();
 migrate(S);
 const P=()=>S.plans.find(p=>p.id===S.cur)||S.plans[0];
-let view='book',month=periodOf(today()),budOpen=false,accF='',fixOpen=false,txQ='',payOpen=null;
+let view='book',month=periodOf(today()),budOpen=false,accF='',slideI=0,listAll=false,bookCtx=null,fixOpen=false,txQ='',payOpen=null;
 const accOf=c=>(S.catAcc&&S.catAcc[c])||c;
 const accTx=t=>t.acc||accOf(t.cat);
 try{const v=localStorage.getItem('wolgeup-view');if(v&&$('v-'+v))view=v}catch(e){}
@@ -671,11 +676,7 @@ function renderBook(){
   $('paceLab').textContent=`${budCats.join(' · ')} ${left<0?'초과':'남은 돈'}`;
   $('bOut').textContent=won(sOut);$('bIn').textContent=won(sIn);$('bBud').textContent=won(budTot);
   $('leftLine').hidden=!budTot;
-  if(accF&&!S.bud.includes(accF))accF='';
-  const fb=accF?(pt.get(accF)||0):0;
-  $('paceBody').hidden=!(accF&&fb);$('paceEmpty').hidden=!!accF;
-  $('paceTtl').textContent=accF;
-  if(accF&&fb)renderPace(out,[accF],fb,byAcc.get(accF)||0);
+
   // 계좌 고르기 패널 (플랜 선택 포함)
   $('budEdit').textContent=budOpen?'닫기':'계좌 고르기';
   $('budPickBook').hidden=!budOpen;
@@ -684,13 +685,19 @@ function renderBook(){
     [...pt.keys()].map(n=>`<label class="chk"><input type="checkbox" data-bud="${esc(n)}"${S.bud.includes(n)?' checked':''}> ${esc(n)} <span class="note num" style="margin:0 0 0 auto">${won(pt.get(n))}</span></label>`).join('')+
     '<div style="height:12px"></div>';
   const accs=S.bud.filter(c=>pt.has(c)||byAcc.has(c));
-  $('budList').innerHTML=accs.length?accs.map(c=>{
+  bookCtx={out,pt,byAcc,accs};
+  if(slideI>=accs.length)slideI=Math.max(0,accs.length-1);
+  $('budList').innerHTML=accs.length?`<div class="slnav"${accs.length<2?' hidden':''}><button id="slPrev" aria-label="이전 계좌">‹</button><select id="slSel" aria-label="계좌 선택">${accs.map((c,i)=>`<option value="${i}">${esc(c)}</option>`).join('')}</select><button id="slNext" aria-label="다음 계좌">›</button></div>
+    <div class="slider" id="slider">`+accs.map(c=>{
     const b=pt.get(c)||0,u=byAcc.get(c)||0,l=b-u,m=br.get(c);
     const parts=m?[...m.entries()].sort((x,y)=>y[1]-x[1]):[];
     const brk=parts.length&&!(parts.length===1&&parts[0][0]===c)?`<div class="br">${parts.map(([k,v])=>`<span>${esc(k)} <b class="num">${won(v)}</b></span>`).join('')}</div>`:'';
-    return `<div class="acc${accF===c?' on':''}" data-accf="${esc(c)}" role="button" tabindex="0" aria-label="${esc(c)} 내역 보기"><div class="t"><span>${esc(c)}</span><b class="${l<0?'neg':''}">${won(l)}</b></div>
+    return `<div class="acc"><div class="t"><span>${accs.length>1?'남은 돈':esc(c)}</span><b class="${l<0?'neg':''}">${won(l)}</b></div>
       <div class="s">넣은 돈 <span class="num">${won(b)}</span> · 쓴 돈 <span class="num">${won(u)}</span>${b?` · ${Math.round(u/b*100)}%`:''}</div>
-      ${b?`<div class="meter${u>b?' over':''}"><i style="width:${Math.min(100,u/b*100)}%"></i></div>`:''}${brk}</div>`}).join(''):'<p class="note">볼 계좌가 없어요. 오른쪽 위 "계좌 고르기"에서 골라 주세요.</p>';
+      ${b?`<div class="meter${u>b?' over':''}"><i style="width:${Math.min(100,u/b*100)}%"></i></div>`:''}${brk}</div>`}).join('')+`</div>${accs.length>1?`<div class="dots">${accs.map(()=>'<i></i>').join('')}</div>`:''}`
+    :'<p class="note">볼 계좌가 없어요. 오른쪽 위 "계좌 고르기"에서 골라 주세요.</p>';
+  const sl=$('slider');if(sl){sl.scrollLeft=slideI*sl.clientWidth;sl.addEventListener('scroll',onSlide,{passive:true})}
+  syncSlide(false);
   const outside=[...byAcc.entries()].filter(([a])=>!S.bud.includes(a));
   $('outside').hidden=!outside.length;
   $('outside').textContent=outside.length?`위 계좌 밖 지출: ${outside.map(([a,v])=>`${a} ${won(v)}원`).join(', ')}. 설정 → 지출 카테고리에서 계좌를 연결할 수 있어요.`:'';
@@ -702,9 +709,26 @@ function renderBook(){
     return `<button class="fxr" data-fixedit="${f.id}">${icTile(f.cat)}<span class="m">${esc(f.name||f.cat)}</span><span class="a num">${f.t==='in'?'+':'-'}${won(f.a)}</span><span class="c">${esc(f.cat)} · 매달 ${f.day}일 · ${done?'이번 달 기록됨':'아직 안 됨'}</span></button>`}).join(''):'<p class="note">통신비, 구독료, 월급처럼 매달 같은 날 오가는 돈을 등록해 두세요.</p>';
   renderTxList();
 }
+let slT=null;
+function onSlide(){clearTimeout(slT);slT=setTimeout(()=>{const sl=$('slider');if(!sl)return;const i=Math.round(sl.scrollLeft/sl.clientWidth);if(i!==slideI){slideI=i;listAll=false;syncSlide(true)}},90)}
+function goSlide(i){const sl=$('slider');if(!sl||!bookCtx)return;i=Math.max(0,Math.min(bookCtx.accs.length-1,i));slideI=i;listAll=false;sl.scrollTo({left:i*sl.clientWidth,behavior:'smooth'});syncSlide(true)}
+function syncSlide(list){
+  const c=bookCtx;if(!c)return;const cur=c.accs[slideI]||'';
+  accF=listAll?'':cur;
+  if($('slSel')){$('slSel').value=String(slideI);$('slPrev').disabled=slideI<=0;$('slNext').disabled=slideI>=c.accs.length-1}
+  document.querySelectorAll('#budList .dots i').forEach((d,i)=>d.classList.toggle('on',i===slideI));
+  const fb=cur?(c.pt.get(cur)||0):0;
+  $('paceBody').hidden=!fb;$('paceEmpty').hidden=!!fb||!cur;
+  $('paceEmpty').textContent=cur?`${cur}은(는) 이번 플랜에 넣은 돈이 없어서 오늘·이번 주 계획을 계산할 수 없어요.`:'';
+  $('paceTtl').textContent=cur;
+  if(fb)renderPace(c.out,[cur],fb,c.byAcc.get(cur)||0);
+  if(list)renderTxList();
+}
 function renderTxList(){
   const q=txQ.trim().toLowerCase();
-  $('accF').hidden=!accF;if(accF)$('accFLab').innerHTML=`<b>${esc(accF)}</b> 계좌 내역만 보는 중`;
+  const curA=bookCtx&&bookCtx.accs[slideI];
+  $('accF').hidden=!curA;
+  if(curA){$('accFLab').innerHTML=listAll?'전체 내역 보는 중':`<b>${esc(curA)}</b> 계좌 내역만 보는 중`;$('accFOff').textContent=listAll?`${curA}만 보기`:'전체 보기'}
   const tx=monthTx(month).filter(t=>!accF||(t.t==='out'&&accTx(t)===accF)).filter(t=>!q||(t.memo||'').toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)||String(t.a).includes(q.replace(/,/g,'')));
   const days=new Map();for(const t of [...tx].sort((a,b)=>b.d.localeCompare(a.d)||(b.at||0)-(a.at||0))){if(!days.has(t.d))days.set(t.d,[]);days.get(t.d).push(t)}
   $('txList').innerHTML=days.size?[...days.entries()].map(([d,l])=>{
@@ -1100,9 +1124,8 @@ document.addEventListener('change',e=>{
   if(t.id==='alOn'){p.alOn=t.checked;renderPlan();save()}
 });
 $('sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet()});
-const pickAcc=el=>{const c=el.dataset.accf;accF=accF===c?'':c;renderBook();if(accF)setTimeout(()=>$('paceBody').scrollIntoView({behavior:'smooth',block:'nearest'}),30)};
-document.addEventListener('click',e=>{const el=e.target.closest('[data-accf]');if(el)pickAcc(el)});
-document.addEventListener('keydown',e=>{const el=e.target.closest&&e.target.closest('[data-accf]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();pickAcc(el)}});
+document.addEventListener('change',e=>{if(e.target.id==='slSel')goSlide(+e.target.value)});
+addEventListener('resize',()=>{const sl=$('slider');if(sl)sl.scrollLeft=slideI*sl.clientWidth});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&E)closeSheet();if(e.key==='Enter'&&E&&e.target.tagName==='INPUT'){e.preventDefault();if(e.target.id==='eNewCatIn')addCat();else saveSheet()}});
 document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;
@@ -1111,7 +1134,9 @@ document.addEventListener('click',e=>{
   if(t.id==='mNext'||t.id==='sNext'){month=addM(month,1);render();return}
   if(t.id==='fab'){openSheet();return}
   if(t.id==='budEdit'){budOpen=!budOpen;renderBook();return}
-  if(t.id==='accFOff'){accF='';renderBook();return}
+  if(t.id==='accFOff'){listAll=!listAll;syncSlide(true);return}
+  if(t.id==='slPrev'){goSlide(slideI-1);return}
+  if(t.id==='slNext'){goSlide(slideI+1);return}
   if(t.id==='fixToggle'){fixOpen=!fixOpen;renderBook();return}
   if(t.dataset.tx){openSheet(S.tx.find(x=>x.id===t.dataset.tx));return}
   if(t.id==='addFixBook'){openSheet(null,'fixed');return}
