@@ -141,7 +141,8 @@ nav.bt button.on{color:var(--acc);font-weight:700}
 .slnav>*{height:44px;min-height:44px;margin:0;box-sizing:border-box}
 .slnav button{padding:0;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--sub);transition:opacity .2s}.slnav button:disabled{opacity:.3}
 .slnav select{text-align:center;text-align-last:center;font-weight:700;font-size:16px;padding:0 32px;-webkit-appearance:none;appearance:none;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%235B6B8C%27 stroke-width=%272.2%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E") no-repeat right 12px center}
-.ordrow{display:flex;align-items:center;gap:6px}.ordrow .chk{flex:1;min-width:0}.ordrow .ord{width:40px;height:40px;min-height:40px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--sub)}.ordrow .ord:disabled{opacity:.3}
+.ordrow{display:flex;align-items:center;gap:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;border-radius:12px;background:var(--card);position:relative;transition:box-shadow .15s,background .15s}.ordrow.lift{z-index:5;box-shadow:0 8px 24px rgba(30,40,80,.18);background:var(--soft2);transition:none}
+.grip{flex:none;width:16px;display:flex;flex-direction:column;gap:3px;align-items:center;color:var(--mut)}.grip i{display:block;width:12px;height:2px;border-radius:1px;background:currentColor}.grip.off{visibility:hidden}.ordrow .chk{flex:1;min-width:0}.ordrow .ord{width:40px;height:40px;min-height:40px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--sub)}.ordrow .ord:disabled{opacity:.3}
 .slider{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.slider::-webkit-scrollbar{display:none}
 .slider .acc{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;padding:0 2px!important;border:0!important}
 .dots{display:flex;justify-content:center;gap:6px;margin-top:12px}.dots i{width:6px;height:6px;border-radius:3px;background:var(--line);transition:width .2s,background .2s}.dots i.on{width:16px;background:var(--acc)}
@@ -698,9 +699,9 @@ function renderBook(){
   $('budPickBook').hidden=!budOpen;
   $('budPickBook').innerHTML=`<div class="field"><label for="planSel">이 달부터 쓸 플랜</label><select id="planSel">${S.plans.map(p=>`<option value="${p.id}"${p.id===plan.id?' selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
     <p class="note" style="margin-top:0"><b>계좌별 현황에 볼 계좌</b></p>`+
-    `<p class="note" style="margin:-4px 0 4px">맨 위 계좌가 처음에 보여요. 화살표로 순서를 바꿀 수 있어요.</p>`+
-    [...S.bud.filter(n=>pt.has(n)),...[...pt.keys()].filter(n=>!S.bud.includes(n))].map(n=>{const on=S.bud.includes(n),i=S.bud.indexOf(n);
-      return `<div class="ordrow"><label class="chk"><input type="checkbox" data-bud="${esc(n)}"${on?' checked':''}> ${esc(n)} <span class="note num" style="margin:0 0 0 auto">${won(pt.get(n))}</span></label>${on?`<button class="ord" data-budmv="${esc(n)}" data-d="-1" aria-label="${esc(n)} 위로"${i===0?' disabled':''}>${'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>'}</button><button class="ord" data-budmv="${esc(n)}" data-d="1" aria-label="${esc(n)} 아래로"${i===S.bud.filter(x=>pt.has(x)).length-1?' disabled':''}>${'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'}</button>`:''}</div>`}).join('')+
+    `<p class="note" style="margin:-4px 0 4px">맨 위 계좌가 처음에 보여요. 꾹 눌러 끌거나 화살표로 순서를 바꿔요.</p>`+
+    [...S.bud.filter(n=>pt.has(n)),...[...pt.keys()].filter(n=>!S.bud.includes(n))].map(n=>{const vis=S.bud.filter(x=>pt.has(x)),on=vis.includes(n),i=vis.indexOf(n);
+      return `<div class="ordrow"${on?` data-ord="${esc(n)}"`:''}>${on?'<span class="grip" aria-hidden="true"><i></i><i></i><i></i></span>':'<span class="grip off"></span>'}<label class="chk"><input type="checkbox" data-bud="${esc(n)}"${on?' checked':''}> ${esc(n)} <span class="note num" style="margin:0 0 0 auto">${won(pt.get(n))}</span></label>${on?`<button class="ord" data-budmv="${esc(n)}" data-d="-1" aria-label="${esc(n)} 위로"${i===0?' disabled':''}>${'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>'}</button><button class="ord" data-budmv="${esc(n)}" data-d="1" aria-label="${esc(n)} 아래로"${i===vis.length-1?' disabled':''}>${'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'}</button>`:''}</div>`}).join('')+
     '<div style="height:12px"></div>';
   const accs=S.bud.filter(c=>pt.has(c)||byAcc.has(c)||inAcc.has(c));
   bookCtx={out,pt,byAcc,inAcc,accs};
@@ -727,6 +728,30 @@ function renderBook(){
     return `<button class="fxr" data-fixedit="${f.id}">${icTile(f.cat)}<span class="m">${esc(f.name||f.cat)}</span><span class="a num">${f.t==='in'?'+':'-'}${won(f.a)}</span><span class="c">${esc(f.cat)} · 매달 ${f.day}일 · ${done?'이번 달 기록됨':'아직 안 됨'}</span></button>`}).join(''):'<p class="note">통신비, 구독료, 월급처럼 매달 같은 날 오가는 돈을 등록해 두세요.</p>';
   renderTxList();
 }
+// 계좌별 현황 순서: 화면에 보이는(이번 플랜에 있는) 계좌끼리만 순서를 바꾸고, 안 보이는 계좌는 뒤에 그대로 둔다
+const budVis=()=>{const pt=planTotals(planFor(month));return S.bud.filter(x=>pt.has(x))};
+function setBudOrder(vis){S.bud=[...vis,...S.bud.filter(x=>!vis.includes(x))];slideI=0;save();renderBook()}
+// 꾹 눌러서 끌어 옮기기
+let drag=null,dragEat=false;
+function dStart(target,x,y){const row=target.closest&&target.closest('.ordrow[data-ord]');if(!row||target.closest('button'))return;
+  const st={row,x,y,on:false};st.t=setTimeout(()=>{st.on=true;const r=row.getBoundingClientRect();st.off=st.y-r.top;row.classList.add('lift');try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}},320);drag=st}
+function dMove(x,y){if(!drag)return false;
+  if(!drag.on){if(Math.hypot(x-drag.x,y-drag.y)>8){clearTimeout(drag.t);drag=null}return false}
+  const row=drag.row;row.style.transform='';
+  for(const o of row.parentNode.querySelectorAll('.ordrow[data-ord]')){if(o===row)continue;const r=o.getBoundingClientRect(),mid=r.top+r.height/2,me=row.getBoundingClientRect();
+    if(y<mid&&me.top>r.top){o.before(row);break}
+    if(y>mid&&me.top<r.top)o.after(row)}
+  const me=row.getBoundingClientRect();row.style.transform=`translateY(${y-drag.off-me.top}px)`;return true}
+function dEnd(){if(!drag)return;clearTimeout(drag.t);if(drag.on){const row=drag.row;row.classList.remove('lift');row.style.transform='';dragEat=true;setTimeout(()=>dragEat=false,400);
+  setBudOrder([...row.parentNode.querySelectorAll('.ordrow[data-ord]')].map(r=>r.dataset.ord))}drag=null}
+document.addEventListener('touchstart',e=>{if(e.touches.length===1)dStart(e.target,e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+document.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0];if(dMove(t.clientX,t.clientY))e.preventDefault()},{passive:false});
+document.addEventListener('touchend',dEnd);document.addEventListener('touchcancel',dEnd);
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')dStart(e.target,e.clientX,e.clientY)});
+document.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&drag)dMove(e.clientX,e.clientY)});
+document.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')dEnd()});
+document.addEventListener('click',e=>{if(dragEat&&e.target.closest('.ordrow')){e.preventDefault();e.stopPropagation()}},true);
+document.addEventListener('contextmenu',e=>{if(e.target.closest('.ordrow[data-ord]'))e.preventDefault()});
 let slT=null;
 function onSlide(){clearTimeout(slT);slT=setTimeout(()=>{const sl=$('slider');if(!sl)return;const i=Math.round(sl.scrollLeft/sl.clientWidth);if(i!==slideI){slideI=i;listAll=false;syncSlide(true)}},90)}
 function goSlide(i){const sl=$('slider');if(!sl||!bookCtx)return;i=Math.max(0,Math.min(bookCtx.accs.length-1,i));slideI=i;listAll=false;sl.scrollTo({left:i*sl.clientWidth,behavior:'smooth'});syncSlide(true)}
@@ -1154,7 +1179,7 @@ document.addEventListener('click',e=>{
   if(t.id==='mNext'||t.id==='sNext'){month=addM(month,1);render();return}
   if(t.id==='fab'){openSheet();return}
   if(t.id==='budEdit'){budOpen=!budOpen;renderBook();return}
-  if(t.dataset.budmv!==undefined){const n=t.dataset.budmv,i=S.bud.indexOf(n),j=i+(+t.dataset.d);if(i>=0&&j>=0&&j<S.bud.length){[S.bud[i],S.bud[j]]=[S.bud[j],S.bud[i]];slideI=0;save();renderBook()}return}
+  if(t.dataset.budmv!==undefined){const vis=budVis(),i=vis.indexOf(t.dataset.budmv),j=i+(+t.dataset.d);if(i>=0&&j>=0&&j<vis.length){[vis[i],vis[j]]=[vis[j],vis[i]];setBudOrder(vis)}return}
   if(t.id==='accFOff'){listAll=!listAll;syncSlide(true);return}
   if(t.id==='slPrev'){goSlide(slideI-1);return}
   if(t.id==='slNext'){goSlide(slideI+1);return}
