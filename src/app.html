@@ -117,15 +117,17 @@ nav.bt button.on{color:var(--acc);font-weight:700}
 /* 가계부 */
 .mnav{display:flex;align-items:center;justify-content:center;gap:4px;margin:0 0 10px}
 .mnav b{font-size:15px;font-weight:700;text-align:center}
-.mnav button{border:0;background:transparent;min-width:44px;padding:0;font-size:22px;color:var(--mut)}
+.mnav button{border:0;background:transparent;width:44px;height:44px;min-height:44px;padding:0;color:var(--mut);display:flex;align-items:center;justify-content:center}
+.mnav b{line-height:44px}
 .fab{position:fixed;right:max(20px,calc(50vw - 300px));bottom:calc(84px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:30px;padding:0;background:var(--acc);border:0;color:var(--accInk);box-shadow:0 8px 20px rgba(47,79,184,.35);z-index:21;display:flex;align-items:center;justify-content:center}
 .meter{height:6px;background:var(--soft);border-radius:3px;overflow:hidden;margin-top:8px}
 .meter i{display:block;height:100%;background:var(--acc);border-radius:3px}
 .meter.over i{background:var(--warn)}
 .pace{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:6px}
-.pc{background:var(--card);border-radius:18px;padding:14px}
-.pc .h{display:flex;justify-content:space-between;font-size:13px;color:var(--mut)}.pc .h b{color:var(--acc)}.pc .h b.neg{color:var(--warn)}
-.pc .v{font:800 18px/1.4 Inter,"Noto Sans KR",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:4px}
+.pc{background:var(--soft2);border:1px solid var(--line);border-radius:16px;padding:12px 14px;min-width:0}
+.pc .h{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--mut)}.pc .h b{color:var(--acc)}.pc .h b.neg{color:var(--warn)}
+.pc .v{font:800 20px/1.3 Inter,"Noto Sans KR",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:6px;overflow:hidden;text-overflow:ellipsis}
+.pc .b{font-size:12px;color:var(--mut);margin-top:6px;font-variant-numeric:tabular-nums}
 .pc .v small{font-size:12px;color:var(--mut);font-weight:500}
 .pnote{font-size:13px;color:var(--mut);margin:0 2px 12px}.pnote b{color:var(--ink)}
 .acc{padding:12px 0;border-bottom:1px solid var(--line)}.acc:last-child{border-bottom:0;padding-bottom:0}.acc:first-child{padding-top:0}
@@ -134,8 +136,10 @@ nav.bt button.on{color:var(--acc);font-weight:700}
 .acc .t b.neg{color:var(--warn)}
 .acc .s{font-size:12px;color:var(--mut);margin-top:2px}
 .slnav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center;margin-bottom:12px}
-.slnav button{min-height:44px;padding:0;border-radius:14px;font-size:20px;line-height:1;transition:opacity .2s,background .2s}.slnav button:disabled{opacity:.3}
-.slnav select{text-align:center;text-align-last:center;font-weight:700;min-height:44px}
+.slnav>*{height:44px;min-height:44px;margin:0;box-sizing:border-box}
+.slnav button{padding:0;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--sub);transition:opacity .2s}.slnav button:disabled{opacity:.3}
+.slnav select{text-align:center;text-align-last:center;font-weight:700;font-size:16px;padding:0 32px;-webkit-appearance:none;appearance:none;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%235B6B8C%27 stroke-width=%272.2%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M6 9l6 6 6-6%27/%3E%3C/svg%3E") no-repeat right 12px center}
+.ordrow{display:flex;align-items:center;gap:6px}.ordrow .chk{flex:1;min-width:0}.ordrow .ord{width:40px;height:40px;min-height:40px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--sub)}.ordrow .ord:disabled{opacity:.3}
 .slider{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.slider::-webkit-scrollbar{display:none}
 .slider .acc{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;padding:0 2px!important;border:0!important}
 .dots{display:flex;justify-content:center;gap:6px;margin-top:12px}.dots i{width:6px;height:6px;border-radius:3px;background:var(--line);transition:width .2s,background .2s}.dots i.on{width:16px;background:var(--acc)}
@@ -230,7 +234,7 @@ button.warnb{background:var(--warn);border-color:var(--warn);color:#fff;font-wei
 
   <!-- 가계부 -->
   <div class="view" id="v-book">
-    <div class="mnav"><button id="mPrev" aria-label="이전 기간">‹</button><b id="mLab"></b><button id="mNext" aria-label="다음 기간">›</button></div>
+    <div class="mnav"><button id="mPrev" aria-label="이전 기간"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><b id="mLab"></b><button id="mNext" aria-label="다음 기간"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
     <section>
       <h2>계좌별 현황 <button class="mini" id="budEdit">계좌 고르기</button></h2>
       <div id="budPickBook" hidden></div>
@@ -239,7 +243,7 @@ button.warnb{background:var(--warn);border-color:var(--warn);color:#fff;font-wei
       <div id="paceBody" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
         <div class="sub" style="margin-bottom:8px"><b style="color:var(--ink)">오늘 · 이번 주 계획</b><span id="paceTtl" hidden></span></div>
         <div class="pace" id="pace"></div>
-        <p class="pnote" id="paceNote" style="margin-bottom:0"></p>
+        <p class="pnote" id="paceNote" style="margin:10px 2px 0"></p>
       </div>
       <p class="note" id="paceEmpty" style="margin:10px 0 0">계좌를 누르면 그 계좌의 오늘·이번 주 계획과 내역이 보여요.</p>
     </section>
@@ -683,12 +687,14 @@ function renderBook(){
   $('budPickBook').hidden=!budOpen;
   $('budPickBook').innerHTML=`<div class="field"><label for="planSel">금액을 가져올 플랜</label><select id="planSel">${S.plans.map(p=>`<option value="${p.id}"${p.id===plan.id?' selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
     <p class="note" style="margin-top:0"><b>계좌별 현황에 볼 계좌</b></p>`+
-    [...pt.keys()].map(n=>`<label class="chk"><input type="checkbox" data-bud="${esc(n)}"${S.bud.includes(n)?' checked':''}> ${esc(n)} <span class="note num" style="margin:0 0 0 auto">${won(pt.get(n))}</span></label>`).join('')+
+    `<p class="note" style="margin:-4px 0 4px">맨 위 계좌가 처음에 보여요. 화살표로 순서를 바꿀 수 있어요.</p>`+
+    [...S.bud.filter(n=>pt.has(n)),...[...pt.keys()].filter(n=>!S.bud.includes(n))].map(n=>{const on=S.bud.includes(n),i=S.bud.indexOf(n);
+      return `<div class="ordrow"><label class="chk"><input type="checkbox" data-bud="${esc(n)}"${on?' checked':''}> ${esc(n)} <span class="note num" style="margin:0 0 0 auto">${won(pt.get(n))}</span></label>${on?`<button class="ord" data-budmv="${esc(n)}" data-d="-1" aria-label="${esc(n)} 위로"${i===0?' disabled':''}>${'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>'}</button><button class="ord" data-budmv="${esc(n)}" data-d="1" aria-label="${esc(n)} 아래로"${i===S.bud.filter(x=>pt.has(x)).length-1?' disabled':''}>${'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'}</button>`:''}</div>`}).join('')+
     '<div style="height:12px"></div>';
   const accs=S.bud.filter(c=>pt.has(c)||byAcc.has(c)||inAcc.has(c));
   bookCtx={out,pt,byAcc,inAcc,accs};
   if(slideI>=accs.length)slideI=Math.max(0,accs.length-1);
-  $('budList').innerHTML=accs.length?`<div class="slnav"${accs.length<2?' hidden':''}><button id="slPrev" aria-label="이전 계좌">‹</button><select id="slSel" aria-label="계좌 선택">${accs.map((c,i)=>`<option value="${i}">${esc(c)}</option>`).join('')}</select><button id="slNext" aria-label="다음 계좌">›</button></div>
+  $('budList').innerHTML=accs.length?`<div class="slnav"${accs.length<2?' hidden':''}><button id="slPrev" aria-label="이전 계좌"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><select id="slSel" aria-label="계좌 선택">${accs.map((c,i)=>`<option value="${i}">${esc(c)}</option>`).join('')}</select><button id="slNext" aria-label="다음 계좌"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
     <div class="slider" id="slider">`+accs.map(c=>{
     const b0=pt.get(c)||0,ia=inAcc.get(c)||0,b=b0+ia,u=byAcc.get(c)||0,l=b-u,m=br.get(c);
     const parts=m?[...m.entries()].sort((x,y)=>y[1]-x[1]):[];
@@ -745,7 +751,7 @@ function renderPace(out,budCats,budTot,budUsed){
   const daily=budTot/dim,bo=out.filter(t=>budCats.includes(accTx(t)));
   const sumR=(a,b)=>bo.filter(t=>t.d>=a&&t.d<=b).reduce((s,t)=>s+t.a,0);
   const card=(k,bud,used)=>{const p=bud?Math.round(used/bud*100):0,o=used>bud;
-    return `<div class="pc"><div class="h"><span>${k}</span><b class="num${o?' neg':''}">${p}%</b></div><div class="v num">${won(used)}<small> / ${won(bud)}</small></div><div class="meter${o?' over':''}"><i style="width:${Math.min(100,p)}%"></i></div></div>`};
+    return `<div class="pc"><div class="h"><span>${k}</span><b class="num${o?' neg':''}">${p}%</b></div><div class="v num">${won(used)}</div><div class="meter${o?' over':''}"><i style="width:${Math.min(100,p)}%"></i></div><div class="b">계획 ${won(Math.round(bud))}</div></div>`};
   if(isCur){
     const day=Math.round((dOf(td)-dOf(ps))/864e5)+1,dow=(dOf(td).getDay()+6)%7;
     let ws=addD(td,-dow),we=addD(ws,6);if(ws<ps)ws=ps;if(we>pe)we=pe;
@@ -1137,6 +1143,7 @@ document.addEventListener('click',e=>{
   if(t.id==='mNext'||t.id==='sNext'){month=addM(month,1);render();return}
   if(t.id==='fab'){openSheet();return}
   if(t.id==='budEdit'){budOpen=!budOpen;renderBook();return}
+  if(t.dataset.budmv!==undefined){const n=t.dataset.budmv,i=S.bud.indexOf(n),j=i+(+t.dataset.d);if(i>=0&&j>=0&&j<S.bud.length){[S.bud[i],S.bud[j]]=[S.bud[j],S.bud[i]];slideI=0;save();renderBook()}return}
   if(t.id==='accFOff'){listAll=!listAll;syncSlide(true);return}
   if(t.id==='slPrev'){goSlide(slideI-1);return}
   if(t.id==='slNext'){goSlide(slideI+1);return}
