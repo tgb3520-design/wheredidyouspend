@@ -1,0 +1,20 @@
+# main 브랜치에 올라오면 Firebase 호스팅(live)으로 자동 배포
+name: Deploy to Firebase Hosting on merge
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_WHERE_DID_YOU_SPEND_YOUR_MONEY }}
+          channelId: live
+          projectId: where-did-you-spend-your-money
