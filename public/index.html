@@ -561,7 +561,9 @@ migrate(S);
 const P=()=>S.plans.find(p=>p.id===S.cur)||S.plans[0];
 let view='book',month=periodOf(today()),budOpen=false,accF='',slideI=0,listAll=false,bookCtx=null,fixOpen=false,txQ='',payOpen=null;
 const accOf=c=>(S.catAcc&&S.catAcc[c])||c;
-const accTx=t=>t.acc||accOf(t.cat);
+const accTx=t=>t.t==='in'?(t.acc||''):(t.acc||accOf(t.cat));
+// 이 내역에 계좌를 따로 적어 둬야 하나 (지출은 카테고리 기본 계좌와 다를 때만, 수입은 고르면 항상)
+const needAcc=(t,cat,acc)=>!!acc&&(t==='in'||acc!==accOf(cat));
 try{const v=localStorage.getItem('wolgeup-view');if(v&&$('v-'+v))view=v}catch(e){}
 
 let ref=null,saveT=null;
@@ -668,9 +670,10 @@ function renderBook(){
   const out=tx.filter(t=>t.t==='out'),inc=tx.filter(t=>t.t==='in');
   const sOut=out.reduce((s,t)=>s+t.a,0),sIn=inc.reduce((s,t)=>s+t.a,0);
   const byAcc=new Map(),br=new Map();
+  const inAcc=new Map();for(const t of inc){const a=accTx(t);if(a)inAcc.set(a,(inAcc.get(a)||0)+t.a)}
   for(const t of out){const a=accTx(t);byAcc.set(a,(byAcc.get(a)||0)+t.a);if(!br.has(a))br.set(a,new Map());const m=br.get(a);m.set(t.cat,(m.get(t.cat)||0)+t.a)}
   const budCats=S.pace.filter(c=>pt.has(c));
-  const budTot=budCats.reduce((s,c)=>s+pt.get(c),0),budUsed=budCats.reduce((s,c)=>s+(byAcc.get(c)||0),0);
+  const budTot=budCats.reduce((s,c)=>s+pt.get(c)+(inAcc.get(c)||0),0),budUsed=budCats.reduce((s,c)=>s+(byAcc.get(c)||0),0);
   const left=budTot-budUsed;
   $('bLeft').textContent=won(left);$('bLeft').classList.toggle('neg',left<0);
   $('paceLab').textContent=`${budCats.join(' · ')} ${left<0?'초과':'남은 돈'}`;
@@ -684,16 +687,16 @@ function renderBook(){
     <p class="note" style="margin-top:0"><b>계좌별 현황에 볼 계좌</b></p>`+
     [...pt.keys()].map(n=>`<label class="chk"><input type="checkbox" data-bud="${esc(n)}"${S.bud.includes(n)?' checked':''}> ${esc(n)} <span class="note num" style="margin:0 0 0 auto">${won(pt.get(n))}</span></label>`).join('')+
     '<div style="height:12px"></div>';
-  const accs=S.bud.filter(c=>pt.has(c)||byAcc.has(c));
-  bookCtx={out,pt,byAcc,accs};
+  const accs=S.bud.filter(c=>pt.has(c)||byAcc.has(c)||inAcc.has(c));
+  bookCtx={out,pt,byAcc,inAcc,accs};
   if(slideI>=accs.length)slideI=Math.max(0,accs.length-1);
   $('budList').innerHTML=accs.length?`<div class="slnav"${accs.length<2?' hidden':''}><button id="slPrev" aria-label="이전 계좌">‹</button><select id="slSel" aria-label="계좌 선택">${accs.map((c,i)=>`<option value="${i}">${esc(c)}</option>`).join('')}</select><button id="slNext" aria-label="다음 계좌">›</button></div>
     <div class="slider" id="slider">`+accs.map(c=>{
-    const b=pt.get(c)||0,u=byAcc.get(c)||0,l=b-u,m=br.get(c);
+    const b0=pt.get(c)||0,ia=inAcc.get(c)||0,b=b0+ia,u=byAcc.get(c)||0,l=b-u,m=br.get(c);
     const parts=m?[...m.entries()].sort((x,y)=>y[1]-x[1]):[];
     const brk=parts.length&&!(parts.length===1&&parts[0][0]===c)?`<div class="br">${parts.map(([k,v])=>`<span>${esc(k)} <b class="num">${won(v)}</b></span>`).join('')}</div>`:'';
     return `<div class="acc"><div class="t"><span>${accs.length>1?'남은 돈':esc(c)}</span><b class="${l<0?'neg':''}">${won(l)}</b></div>
-      <div class="s">넣은 돈 <span class="num">${won(b)}</span> · 쓴 돈 <span class="num">${won(u)}</span>${b?` · ${Math.round(u/b*100)}%`:''}</div>
+      <div class="s">넣은 돈 <span class="num">${won(b0)}</span>${ia?` · 들어온 돈 <span class="num">+${won(ia)}</span>`:''} · 쓴 돈 <span class="num">${won(u)}</span>${b?` · ${Math.round(u/b*100)}%`:''}</div>
       ${b?`<div class="meter${u>b?' over':''}"><i style="width:${Math.min(100,u/b*100)}%"></i></div>`:''}${brk}</div>`}).join('')+`</div>${accs.length>1?`<div class="dots">${accs.map(()=>'<i></i>').join('')}</div>`:''}`
     :'<p class="note">볼 계좌가 없어요. 오른쪽 위 "계좌 고르기"에서 골라 주세요.</p>';
   const sl=$('slider');if(sl){sl.scrollLeft=slideI*sl.clientWidth;sl.addEventListener('scroll',onSlide,{passive:true})}
@@ -717,9 +720,9 @@ function syncSlide(list){
   accF=listAll?'':cur;
   if($('slSel')){$('slSel').value=String(slideI);$('slPrev').disabled=slideI<=0;$('slNext').disabled=slideI>=c.accs.length-1}
   document.querySelectorAll('#budList .dots i').forEach((d,i)=>d.classList.toggle('on',i===slideI));
-  const fb=cur?(c.pt.get(cur)||0):0;
+  const fb=cur?(c.pt.get(cur)||0)+(c.inAcc.get(cur)||0):0;
   $('paceBody').hidden=!fb;$('paceEmpty').hidden=!!fb||!cur;
-  $('paceEmpty').textContent=cur?`${cur}은(는) 이번 플랜에 넣은 돈이 없어서 오늘·이번 주 계획을 계산할 수 없어요.`:'';
+  $('paceEmpty').textContent=cur?`${cur}은(는) 넣은 돈이나 들어온 돈이 없어서 오늘·이번 주 계획을 계산할 수 없어요.`:'';
   $('paceTtl').textContent=cur;
   if(fb)renderPace(c.out,[cur],fb,c.byAcc.get(cur)||0);
   if(list)renderTxList();
@@ -729,12 +732,12 @@ function renderTxList(){
   const curA=bookCtx&&bookCtx.accs[slideI];
   $('accF').hidden=!curA;
   if(curA){$('accFLab').innerHTML=listAll?'전체 내역 보는 중':`<b>${esc(curA)}</b> 계좌 내역만 보는 중`;$('accFOff').textContent=listAll?`${curA}만 보기`:'전체 보기'}
-  const tx=monthTx(month).filter(t=>!accF||(t.t==='out'&&accTx(t)===accF)).filter(t=>!q||(t.memo||'').toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)||String(t.a).includes(q.replace(/,/g,'')));
+  const tx=monthTx(month).filter(t=>!accF||accTx(t)===accF).filter(t=>!q||(t.memo||'').toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)||String(t.a).includes(q.replace(/,/g,'')));
   const days=new Map();for(const t of [...tx].sort((a,b)=>b.d.localeCompare(a.d)||(b.at||0)-(a.at||0))){if(!days.has(t.d))days.set(t.d,[]);days.get(t.d).push(t)}
   $('txList').innerHTML=days.size?[...days.entries()].map(([d,l])=>{
     const dt=dOf(d);const o=l.filter(t=>t.t==='out').reduce((s,t)=>s+t.a,0);
     return `<div class="day"><h3><span>${+d.slice(5,7)}/${+d.slice(8)} ${WD[dt.getDay()]}</span><span class="num">${o?'-'+won(o):''}</span></h3>`+
-      l.map(t=>`<button class="tx" data-tx="${t.id}">${icTile(t.cat)}<span class="m">${esc(t.memo||t.cat)}</span><span class="a num${t.t==='in'?' in':''}">${t.t==='in'?'+':'-'}${won(t.a)}</span><span class="c">${esc(t.cat)}${accTx(t)!==t.cat&&t.t==='out'?' · '+esc(accTx(t)):''}${t.fx?' · 고정':''}</span></button>`).join('')+'</div>'}).join('')
+      l.map(t=>`<button class="tx" data-tx="${t.id}">${icTile(t.cat)}<span class="m">${esc(t.memo||t.cat)}</span><span class="a num${t.t==='in'?' in':''}">${t.t==='in'?'+':'-'}${won(t.a)}</span><span class="c">${esc(t.cat)}${accTx(t)&&accTx(t)!==t.cat?' · '+esc(accTx(t)):''}${t.fx?' · 고정':''}</span></button>`).join('')+'</div>'}).join('')
     :(q||accF?'<div class="empty">찾는 내역이 없어요.</div>':'<div class="empty">아직 기록이 없어요.<br>오른쪽 아래 + 를 눌러 첫 내역을 적어 보세요.</div>');
 }
 
@@ -824,10 +827,12 @@ function sheetType(){
   if(!S.cats[E.t].includes(E.cat))E.cat=(S.lastCat[E.t]&&S.cats[E.t].includes(S.lastCat[E.t]))?S.lastCat[E.t]:(S.cats[E.t][0]||'기타');
   $('eCats').innerHTML=S.cats[E.t].map(c=>{const i=catIc(c);return `<button data-ecat="${esc(c)}" class="${c===E.cat?'on':''}">${i.k?i.html:`<span class="ini">${i.html}</span>`}<span class="l">${esc(c)}</span></button>`}).join('')+`<button data-ecatnew class="newc">${svgI('dots').replace(ICONS.dots,'<path d="M12 5v14M5 12h14"/>')}<span class="l">추가</span></button>`;
   $('eAmtLab').textContent=E.t==='out'?'얼마 썼어요?':'얼마 받았어요?';
-  const accList=[...new Set([...planTotals(planFor(periodOf(E.d||today()))).keys(),accOf(E.cat)])];
-  if(!E.accManual||!E.acc)E.acc=accOf(E.cat);
-  $('eAccRow').hidden=E.t!=='out';
-  $('eAccs').innerHTML=accList.map(a=>`<button data-eacc="${esc(a)}" class="${a===E.acc?'on':''}">${esc(a)}</button>`).join('');
+  const pk=[...planTotals(planFor(periodOf(E.d||today()))).keys()];
+  let accList;
+  if(E.t==='in'){accList=['',...pk];if(!E.accManual)E.acc=(S.inAcc&&S.inAcc[E.cat]&&pk.includes(S.inAcc[E.cat]))?S.inAcc[E.cat]:'';if(!accList.includes(E.acc||''))accList.push(E.acc)}
+  else{accList=[...new Set([...pk,accOf(E.cat)])];if(!E.accManual||!E.acc)E.acc=accOf(E.cat)}
+  $('eAccRow').hidden=accList.length<2&&E.t==='in';
+  $('eAccs').innerHTML=accList.map(a=>`<button data-eacc="${esc(a)}" class="${a===(E.acc||'')?'on':''}">${a?esc(a):'선택 안 함'}</button>`).join('');
   saveLabel();
   const fv=S.fav.filter(f=>f.t===E.t),show=!E.edit&&E.kind==='tx'&&fv.length;
   $('eFavs').innerHTML=show?fv.map(f=>`<button data-qfav="${S.fav.indexOf(f)}" class="${favEdit?'x':''}">${favEdit?'× ':''}${esc(f.memo||f.cat)}<span class="num">${won(f.a)}</span></button>`).join('')+`<button data-favedit class="ghost">${favEdit?'완료':'편집'}</button>`:'';
@@ -838,7 +843,7 @@ function addCat(){
   if(!S.cats[E.t].includes(n)){S.cats[E.t].push(n);if(E.t==='out'&&n!=='생활비'&&planTotals(planFor(month)).has('생활비'))S.catAcc[n]='생활비'}
   E.cat=n;$('eNewCatIn').value='';$('eNewCat').hidden=true;save();sheetType();toast(`'${n}' 카테고리를 추가했어요`);
 }
-function saveLabel(){if(!E)return;const a=parse($('eAmt').value);$('eSave').textContent=E.kind==='fixed'?(E.edit?'고정 항목 저장':'고정 항목 추가'):(a?`${E.cat} ${won(a)}원 ${E.edit?'저장':'기록'}${E.t==='out'&&E.acc&&E.acc!==accOf(E.cat)?` · ${E.acc}`:''}`:(E.edit?'저장':'기록'));}
+function saveLabel(){if(!E)return;const a=parse($('eAmt').value);$('eSave').textContent=E.kind==='fixed'?(E.edit?'고정 항목 저장':'고정 항목 추가'):(a?`${E.cat} ${won(a)}원 ${E.edit?'저장':'기록'}${needAcc(E.t,E.cat,E.acc)?` · ${E.acc}`:''}`:(E.edit?'저장':'기록'));}
 let lpT=null,lpFired=false,lpCat=null;
 const sheetCats=$('eCats');
 sheetCats.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-ecat]');if(!b||!E)return;lpFired=false;clearTimeout(lpT);b.classList.add('press');
@@ -1057,13 +1062,13 @@ function saveSheet(){
   if(E.kind==='fixed'){
     let f=S.fixed.find(x=>x.id===E.id);const isNew=!f;
     if(isNew){f={id:E.id,since:d.slice(0,7)};S.fixed.push(f)}
-    Object.assign(f,{t:E.t,a,cat:E.cat,name:memo,day:+d.slice(8)});if(E.t==='out'&&E.acc&&E.acc!==accOf(E.cat))f.acc=E.acc;else delete f.acc;
+    Object.assign(f,{t:E.t,a,cat:E.cat,name:memo,day:+d.slice(8)});if(needAcc(E.t,E.cat,E.acc))f.acc=E.acc;else delete f.acc;
     closeSheet();const n=runFixed();save();render();
     toast(isNew?`고정 항목을 추가했어요${n?' · 이번 달 것도 기록했어요':''}`:'고정 항목을 고쳤어요. 이미 기록된 내역은 그대로예요');return;
   }
-  const tx={id:E.id,t:E.t,a,cat:E.cat,memo,d,at:E.at||Date.now()};S.lastCat[E.t]=E.cat;if(E.t==='out'&&E.acc&&E.acc!==accOf(E.cat))tx.acc=E.acc;if(E.fx)tx.fx=E.fx;
+  const tx={id:E.id,t:E.t,a,cat:E.cat,memo,d,at:E.at||Date.now()};S.lastCat[E.t]=E.cat;if(needAcc(E.t,E.cat,E.acc))tx.acc=E.acc;if(E.t==='in'){S.inAcc=S.inAcc||{};S.inAcc[E.cat]=E.acc||''}if(E.fx)tx.fx=E.fx;
   if($('eFav').checked&&!E.edit)S.fav.push({t:tx.t,a:tx.a,cat:tx.cat,memo:tx.memo});
-  if($('eRep').checked&&!E.edit){const f={id:uid(),name:memo,a,day:+d.slice(8),t:tx.t,cat:tx.cat,since:d.slice(0,7)};S.fixed.push(f);S.fd[f.id+'|'+d.slice(0,7)]=1;tx.fx=f.id}
+  if($('eRep').checked&&!E.edit){const f={id:uid(),name:memo,a,day:+d.slice(8),t:tx.t,cat:tx.cat,since:d.slice(0,7)};if(tx.acc)f.acc=tx.acc;S.fixed.push(f);S.fd[f.id+'|'+d.slice(0,7)]=1;tx.fx=f.id}
   const ed=E.edit;closeSheet();commit(tx,ed?'수정했어요':`${tx.cat} ${won(a)}원 기록했어요`);
 }
 
@@ -1144,7 +1149,7 @@ document.addEventListener('click',e=>{
   if(E){
     if(t.id==='eOut'||t.id==='eIn'){E.t=t.id==='eOut'?'out':'in';sheetType();return}
     if(t.dataset.ecat!==undefined){E.cat=t.dataset.ecat;sheetType();return}
-    if(t.dataset.eacc!==undefined){E.acc=t.dataset.eacc;E.accManual=E.acc!==accOf(E.cat);sheetType();return}
+    if(t.dataset.eacc!==undefined){E.acc=t.dataset.eacc;E.accManual=E.t==='in'||E.acc!==accOf(E.cat);sheetType();return}
     if(t.dataset.q!==undefined){const q=+t.dataset.q;const v=q?parse($('eAmt').value)+q:0;$('eAmt').value=v?won(v):'';saveLabel();return}
     if(t.dataset.day!==undefined){$('eDate').value=addD(today(),+t.dataset.day);return}
     if(t.hasAttribute('data-ecatnew')){clearTimeout(focusT);$('eNewCat').hidden=false;$('eNewCatIn').focus();return}
